@@ -1,0 +1,5 @@
+# local test data (contains private model copies and logs)
+probe/
+*.zsc
+__pycache__/
+*.pyc

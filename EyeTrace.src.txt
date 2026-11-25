@@ -1,0 +1,488 @@
+// =============================================================================
+//  EyeTrace  --  eye decal tracing helper for ZBrush 2022 / 2025
+//  Build with build.py -> dist/EyeTrace.txt (pure ASCII). Install into
+//  ZStartup/Macros/EyeTrace/ ; ZBrush compiles it at startup and it shows
+//  as  ZPlugin > EyeTrace (Chinese title).
+//
+//  How it works (all behaviours verified on 2022.0.5 and 2025.0.1):
+//   * Old draft stays on the BASE polypaint. "Start" duplicates the SubTool as
+//     a hidden backup (<name>ETDraft), then fills the base with the clean
+//     colour at (100 - visibility)% so the draft is faded.
+//   * A new layer "ETInk-r-g-b" is created on top. Layer polypaint is stored
+//     as absolute colour, so the ink does not depend on the faded draft.
+//   * "Apply" re-projects the draft from the backup (ProjectAll, other
+//     SubTools hidden) and fades again with the new visibility.
+//   * "Finish" fills the base with the clean colour at 100% -> only ink left.
+//   * FillObject / ProjectAll go to the base only when the selected layer is
+//     NOT recording and hidden. IModGet on the layer item: bit0 = REC,
+//     bit1 = visible. IClick at (W-24) toggles REC, (W-5) toggles the eye.
+//   * Masking is respected by FillObject / ProjectAll (only unmasked area).
+//  Numeric variable names contain no underscore (2025 [If] parser issue).
+// =============================================================================
+
+[VarDef,etDbg,__DBGON__]
+[VarDef,etDbgPath,"__DBGPATH__"]
+[VarDef,etDbgOff,0]
+[VarDef,etDbgN,0]
+
+// ---- UI paths / strings (English fallback, Chinese set below) ----
+[VarDef,etP,"ZPlugin:EyeTrace"]
+[VarDef,etSl,"ZPlugin:EyeTrace:Draft Visibility"]
+[VarDef,etB1,"ZPlugin:EyeTrace:Start"]
+[VarDef,etB2,"ZPlugin:EyeTrace:Apply Visibility"]
+[VarDef,etB3,"ZPlugin:EyeTrace:Finish"]
+[VarDef,etB4,"ZPlugin:EyeTrace:Restore Draft"]
+[VarDef,etB5,"ZPlugin:EyeTrace:Help"]
+[VarDef,etTitle,""]
+[VarDef,etS1,""]
+[VarDef,etS2,""]
+[VarDef,etS3,""]
+[VarDef,etS4,""]
+[VarDef,etS5,""]
+[VarDef,etS6,""]
+[VarDef,etT0,""]
+[VarDef,etT1,""]
+[VarDef,etT2,""]
+[VarDef,etT3,""]
+[VarDef,etT4,""]
+[VarDef,etT5,""]
+[VarDef,etMHelp,""]
+[VarDef,etMNoMesh,""]
+[VarDef,etMBusy,""]
+[VarDef,etMHasBak,""]
+[VarDef,etMNoInk,""]
+[VarDef,etMNoBak,""]
+[VarDef,etMStart1,""]
+[VarDef,etMStart2,""]
+[VarDef,etMStartOK,""]
+[VarDef,etMApplyOK,""]
+[VarDef,etMFinish1,""]
+[VarDef,etMFinishOK,""]
+[VarDef,etMRestoreOK,""]
+[VarDef,etMNoColor,""]
+[VarDef,etMDupFail,""]
+[VarDef,etBOK,""]
+[VarDef,etBCancel,""]
+[VarDef,etBDel,""]
+[VarDef,etBKeep,""]
+
+[VarSet,etTitle,CN("眼睛描图")]
+[VarSet,etS1,CN("旧稿可见度")]
+[VarSet,etS2,CN("开始描图")]
+[VarSet,etS3,CN("应用可见度")]
+[VarSet,etS4,CN("完成描图")]
+[VarSet,etS5,CN("恢复旧稿")]
+[VarSet,etS6,CN("使用说明")]
+[VarSet,etT0,CN("旧稿保留的百分比：0 = 完全看不到，100 = 原样显示。改完后点“应用可见度”。")]
+[VarSet,etT1,CN("把当前颜色作为干净底色，淡化旧稿并新建描线图层 ETInk。只处理未遮罩区域。")]
+[VarSet,etT2,CN("按滑杆数值重新设置旧稿的深浅（描好的线不受影响）。")]
+[VarSet,etT3,CN("把旧稿区域填回干净底色，只留下描线。")]
+[VarSet,etT4,CN("把旧稿按原样恢复到模型上（描线图层保留）。")]
+[VarSet,etT5,CN("显示使用说明。")]
+[VarSet,etBOK,CN("继续")]
+[VarSet,etBCancel,CN("取消")]
+[VarSet,etBDel,CN("删除备份")]
+[VarSet,etBKeep,CN("保留备份")]
+[VarSet,etMHelp,CN("眼睛描图 使用说明\n\n1. 选中带旧稿的子工具，按 T 进入编辑模式。\n2. 如果眼睛和脸连在一起：先用遮罩把眼睛以外的地方遮住（只处理未遮罩区域）。单独的眼睛面片可以不遮罩。\n3. 把主颜色设成干净底色（一般是白色），调好“旧稿可见度”，点“开始描图”。\n4. 直接在模型上描线，可以随意旋转任何角度。线画在 ETInk 图层上。\n5. 想让旧稿更深或更浅：改滑杆，点“应用可见度”。\n6. 描完点“完成描图”，旧稿被清掉，只留描线。\n\n插件会把原子工具复制一份隐藏备份（名字以 ETDraft 结尾），用于恢复旧稿。")]
+[VarSet,etMNoMesh,CN("请先选中一个多边形网格子工具，并按 T 进入编辑模式。")]
+[VarSet,etMBusy,CN("当前选中的图层已经是描线图层 ETInk，说明已经开始描图了。\n要调深浅请用“应用可见度”，描完请点“完成描图”。")]
+[VarSet,etMHasBak,CN("这个子工具已经有旧稿备份（ETDraft）。\n请先“完成描图”或“恢复旧稿”后删除备份，再重新开始。")]
+[VarSet,etMNoInk,CN("没有找到描线图层。\n请在 工具 > 图层 里点选名字以 ETInk 开头的图层，再试一次。")]
+[VarSet,etMNoBak,CN("没有找到旧稿备份子工具（名字以 ETDraft 结尾），无法恢复旧稿。")]
+[VarSet,etMStart1,CN("将以当前主颜色作为干净底色：")]
+[VarSet,etMStart2,CN("\n旧稿可见度：")]
+[VarSet,etMStartOK,CN("已开始描图。现在直接在模型上画线即可，可以任意旋转。\n线会画在 ETInk 图层上。")]
+[VarSet,etMApplyOK,CN("旧稿可见度已更新。")]
+[VarSet,etMFinish1,CN("描图完成，旧稿已清除。\n是否删除隐藏的旧稿备份子工具？")]
+[VarSet,etMFinishOK,CN("描图完成，旧稿已清除。")]
+[VarSet,etMRestoreOK,CN("旧稿已恢复。")]
+[VarSet,etMNoColor,CN("读取不到主颜色，干净底色按白色处理。")]
+[VarSet,etMDupFail,CN("复制子工具失败，已取消。")]
+
+[VarSet,etP,[StrMerge,"ZPlugin:",#etTitle]]
+[VarSet,etSl,[StrMerge,#etP,":",#etS1]]
+[VarSet,etB1,[StrMerge,#etP,":",#etS2]]
+[VarSet,etB2,[StrMerge,#etP,":",#etS3]]
+[VarSet,etB3,[StrMerge,#etP,":",#etS4]]
+[VarSet,etB4,[StrMerge,#etP,":",#etS5]]
+[VarSet,etB5,[StrMerge,#etP,":",#etS6]]
+
+// ---- working variables (no underscores) ----
+[VarDef,etOK,0]
+[VarDef,etA,0]
+[VarDef,etBk,-1]
+[VarDef,etN,0]
+[VarDef,etI,0]
+[VarDef,etTmp,0]
+[VarDef,etV,30]
+[VarDef,etCR,255]
+[VarDef,etCG,255]
+[VarDef,etCB,255]
+[VarDef,etUR,0]
+[VarDef,etUG,0]
+[VarDef,etUB,0]
+[VarDef,etRI,100]
+[VarDef,etMrgb,0]
+[VarDef,etPB,0]
+[VarDef,etHasL,0]
+[VarDef,etModz,0]
+[VarDef,etRes,0]
+[VarDef,etQa,0]
+[VarDef,etQb,0]
+[VarDef,etQc,0]
+[VarDef,etLp,""]
+[VarDef,etLn,""]
+[VarDef,etName,""]
+[VarDef,etBkName,""]
+[VarDef,etT,""]
+[VarDef,etFU,""]
+[VarDef,etSt(1024),0]
+[VarDef,etLen,0]
+[VarDef,etLw,0]
+[VarDef,etLh,0]
+[VarDef,etMd,0]
+[VarDef,etLg,0]
+
+// ---- debug log ----
+[RoutineDef,ETLog,
+	[If,etDbg==1,
+		[If,etDbgN==0,[MemDelete,ETDbgMem][MemCreate,ETDbgMem,65536,0][VarSet,etDbgOff,0]]
+		[VarInc,etDbgN]
+		[VarSet,etLg,[MemWriteString,ETDbgMem,[StrMerge,s,[StrFromAsc,10]],etDbgOff]]
+		[VarSet,etDbgOff,etDbgOff+etLg]
+		[MemSaveToFile,ETDbgMem,etDbgPath,1]
+	]
+,s]
+
+// ---- generic helpers ----
+[RoutineDef,ETRename,
+	[VarSet,etFU,[FileNameResolvePath,"ZSTARTUP_ZPLUGS64/MacroData/ZFileUtils64.dll"]]
+	[If,[IExists,btn],
+		[FileExecute,[Var,etFU],RenameSetNext,nm]
+		[IPress,btn]
+	]
+,btn,nm]
+
+// current SubTool name without the trailing "."
+[RoutineDef,ETSubName,
+	[VarSet,etT,[IGetTitle,Tool:Item Info]]
+	[VarSet,etTmp,[StrLength,etT]]
+	[If,etTmp>0,
+		[If,[StrFind,".",etT,etTmp-1]==(etTmp-1),
+			[VarSet,etT,[StrExtract,etT,0,etTmp-2]]
+		]
+	]
+]
+
+// make sure a PolyMesh3D is in Edit mode, at the highest SDiv
+[RoutineDef,ETCheck,
+	[VarSet,etOK,0]
+	[If,[IGet,Transform:Edit],
+		[If,[IExists,Tool:Geometry:SDiv],
+			[If,[IGetMax,Tool:Geometry:SDiv]>1,
+				[ISet,Tool:Geometry:SDiv,[IGetMax,Tool:Geometry:SDiv]]
+			]
+		]
+		[If,[IExists,Tool:Layers:New],
+			[If,[IsEnabled,Tool:Layers:New],[VarSet,etOK,1]]
+		]
+	]
+	[RoutineCall,ETLog,[StrMerge,"check ok=",etOK," sub=",[SubToolGetActiveIndex]," of ",[SubToolGetCount]]]
+]
+
+// is the selected layer the ink layer? -> etOK, etLn, etLp
+[RoutineDef,ETInkSelected,
+	[VarSet,etOK,0]
+	[VarSet,etLn,""]
+	[If,[IExists,Tool:Layers:Layer Intensity],
+		[If,[IsEnabled,Tool:Layers:Layer Intensity],
+			[VarSet,etLn,[IGetTitle,Tool:Layers:Layer Intensity]]
+			[VarSet,etLp,[IGetTitle,Tool:Layers:Layer Intensity,1]]
+			[If,[StrFind,"ETInk",etLn,0]==0,[VarSet,etOK,1]]
+		]
+	]
+]
+
+// the ink layer must be the selected layer (walking the list with SelectUp/Down is unreliable)
+[RoutineDef,ETFindInk,
+	[RoutineCall,ETInkSelected]
+	[RoutineCall,ETLog,[StrMerge,"findink ok=",etOK," name=",etLn]]
+]
+
+// parse clean colour from "ETInk-r-g-b"
+[RoutineDef,ETParseInk,
+	[RoutineCall,ETLog,[StrMerge,"parse in ln=",etLn]]
+	[VarSet,etQa,[StrFind,"-",etLn,0]]
+	[If,etQa>0,
+		[VarSet,etQb,[StrFind,"-",etLn,etQa+1]]
+		[VarSet,etQc,[StrFind,"-",etLn,etQb+1]]
+		[If,(etQb>etQa)*(etQc>etQb),
+			// NOTE: never nest [StrLength,..]-1 inside an argument on 2025 (silently stops)
+			[VarSet,etLen,[StrLength,etLn]]
+			[VarSet,etCR,[Val,[StrExtract,etLn,etQa+1,etQb-1]]]
+			[VarSet,etCG,[Val,[StrExtract,etLn,etQb+1,etQc-1]]]
+			[VarSet,etCB,[Val,[StrExtract,etLn,etQc+1,etLen-1]]]
+		]
+	]
+	[RoutineCall,ETLog,[StrMerge,"clean=",etCR,",",etCG,",",etCB]]
+]
+
+// read current main colour into etUR/etUG/etUB (etOK=0 if impossible)
+[RoutineDef,ETReadColor,
+	[VarSet,etOK,0]
+	[If,[IExists,Color:R],
+		[VarSet,etUR,[IGet,Color:R]]
+		[VarSet,etUG,[IGet,Color:G]]
+		[VarSet,etUB,[IGet,Color:B]]
+		[VarSet,etOK,1]
+	]
+	[RoutineCall,ETLog,[StrMerge,"color ok=",etOK," ",etUR,",",etUG,",",etUB]]
+]
+
+// locate backup SubTool <name>ETDraft -> etBk (-1 if none); keeps etA active
+[RoutineDef,ETFindBackup,
+	[VarSet,etBk,-1]
+	[VarSet,etA,[SubToolGetActiveIndex]]
+	[RoutineCall,ETSubName]
+	[VarSet,etName,etT]
+	[VarSet,etBkName,[StrMerge,etName,"ETDraft"]]
+	[VarSet,etN,[SubToolGetCount]]
+	[VarSet,etI,0]
+	[Loop,etN,
+		[If,etI!=etA,
+			[SubToolSelect,etI]
+			[RoutineCall,ETSubName]
+			[If,[StrLength,etT]==[StrLength,etBkName],
+				[If,[StrFind,etBkName,etT,0]==0,[VarSet,etBk,etI][LoopExit]]
+			]
+		]
+		[VarInc,etI]
+	]
+	[SubToolSelect,etA]
+	[RoutineCall,ETLog,[StrMerge,"backup ",etBkName," idx=",etBk," active=",etA]]
+]
+
+// before touching the base: stop recording + hide the selected layer
+[RoutineDef,ETBaseBegin,
+	[VarSet,etHasL,0]
+	[If,[IExists,Tool:Layers:Layer Intensity],
+		[If,[IsEnabled,Tool:Layers:Layer Intensity],[VarSet,etHasL,1]]
+	]
+	// layer item IModGet (measured): 1 = recording (visible), 2 = visible only, 0 = hidden
+	// IClick at W-24 toggles REC (measured), W-5 toggles the eye
+	[If,etHasL,
+		[VarSet,etLp,[IGetTitle,Tool:Layers:Layer Intensity,1]]
+		[VarSet,etLw,[IWidth,etLp]]
+		[VarSet,etLh,[IHeight,etLp]]
+		[VarSet,etModz,[IModGet,etLp]]
+		[VarSet,etMd,etModz]
+		[If,etMd==1,[IClick,etLp,etLw-24,etLh/2][VarSet,etMd,[IModGet,etLp]]]
+		[If,etMd==2,[IClick,etLp,etLw-5,etLh/2][VarSet,etMd,[IModGet,etLp]]]
+		[RoutineCall,ETLog,[StrMerge,"basebegin ",etLp," mod0=",etModz," now=",etMd]]
+	]
+]
+
+// afterwards: show the layer again and resume recording if it was on
+[RoutineDef,ETBaseEnd,
+	[If,etHasL,
+		[VarSet,etMd,[IModGet,etLp]]
+		[If,etModz>0,
+			[If,etMd==0,[IClick,etLp,etLw-5,etLh/2][VarSet,etMd,[IModGet,etLp]]]
+		]
+		[If,etModz==1,
+			[If,etMd==2,[IClick,etLp,etLw-24,etLh/2][VarSet,etMd,[IModGet,etLp]]]
+		]
+		[RoutineCall,ETLog,[StrMerge,"baseend mod=",etMd]]
+	]
+]
+
+// make the selected (ink) layer visible AND recording, so new strokes go into it
+[RoutineDef,ETRecOn,
+	[If,[IsEnabled,Tool:Layers:Layer Intensity],
+		[VarSet,etLp,[IGetTitle,Tool:Layers:Layer Intensity,1]]
+		[VarSet,etLw,[IWidth,etLp]]
+		[VarSet,etLh,[IHeight,etLp]]
+		[VarSet,etMd,[IModGet,etLp]]
+		[RoutineCall,ETLog,[StrMerge,"recon start mod=",etMd]]
+		[If,etMd==0,[IClick,etLp,etLw-5,etLh/2][VarSet,etMd,[IModGet,etLp]]]
+		[RoutineCall,ETLog,[StrMerge,"recon after eye mod=",etMd]]
+		[If,etMd==2,[IClick,etLp,etLw-24,etLh/2][VarSet,etMd,[IModGet,etLp]]]
+		[RoutineCall,ETLog,[StrMerge,"recon mod=",etMd]]
+	]
+]
+
+// FillObject with colour (r,g,b) at Rgb Intensity pct (colour only, no material)
+[RoutineDef,ETFill,
+	[If,pct>0,
+		[VarSet,etRI,[IGet,Draw:Rgb Intensity]]
+		[VarSet,etMrgb,[IGet,Draw:Mrgb]]
+		[IPress,Draw:Rgb]
+		[IColorSet,fr,fg,fb]
+		[ISet,Draw:Rgb Intensity,pct]
+		[IPress,Color:FillObject]
+		[ISet,Draw:Rgb Intensity,etRI]
+		[If,etMrgb,[IPress,Draw:Mrgb]]
+		[RoutineCall,ETLog,[StrMerge,"fill ",fr,",",fg,",",fb," @",pct]]
+	]
+,fr,fg,fb,pct]
+
+// re-project the draft from backup etBk onto active etA (others hidden)
+[RoutineDef,ETProjectDraft,
+	[VarSet,etN,[SubToolGetCount]]
+	[VarSet,etI,0]
+	[Loop,etN,
+		[VarSet,etTmp,[SubToolGetStatus,etI]]
+		[VarSet,etSt(etI),etTmp]
+		[If,((etI==etA)+(etI==etBk))>0,
+			[If,(etTmp&1)==0,[VarSet,etTmp,etTmp+1]]
+		,
+			[If,(etTmp&1)==1,[VarSet,etTmp,etTmp-1]]
+		]
+		[SubToolSetStatus,etI,etTmp]
+		[VarInc,etI]
+	]
+	[SubToolSelect,etA]
+	[VarSet,etPB,[IGet,Tool:SubTool:PA Blur]]
+	[ISet,Tool:SubTool:PA Blur,0]
+	[IPress,Tool:SubTool:ProjectAll]
+	[ISet,Tool:SubTool:PA Blur,etPB]
+	[VarSet,etI,0]
+	[Loop,etN,
+		[SubToolSetStatus,etI,etSt(etI)]
+		[VarInc,etI]
+	]
+	[SubToolSelect,etA]
+	[RoutineCall,ETLog,"projected draft"]
+]
+
+// ---- actions ----
+[RoutineDef,ETStart,
+	[VarSet,etDbgN,0]
+	[RoutineCall,ETCheck]
+	[If,etOK==0,[Note,#etMNoMesh][Exit]]
+	[RoutineCall,ETInkSelected]
+	[If,etOK==1,[Note,#etMBusy][Exit]]
+	[RoutineCall,ETFindBackup]
+	[If,etBk>=0,[Note,#etMHasBak][Exit]]
+	[RoutineCall,ETReadColor]
+	[If,etOK==0,
+		[VarSet,etUR,255][VarSet,etUG,255][VarSet,etUB,255]
+		[Note,#etMNoColor]
+	]
+	[VarSet,etCR,etUR][VarSet,etCG,etUG][VarSet,etCB,etUB]
+	[VarSet,etV,[IGet,#etSl]]
+	[NoteIButton,#etBOK]
+	[NoteIButton,#etBCancel]
+	[VarSet,etRes,[Note,[StrMerge,#etMStart1,etCR,", ",etCG,", ",etCB,#etMStart2,etV,"%"]]]
+	[If,etRes!=1,[Exit]]
+	// 1) hidden backup copy
+	[VarSet,etA,[SubToolGetActiveIndex]]
+	[VarSet,etN,[SubToolGetCount]]
+	[IPress,Tool:SubTool:Duplicate]
+	[If,[SubToolGetCount]!=(etN+1),[Note,#etMDupFail][Exit]]
+	[VarSet,etBk,[SubToolGetActiveIndex]]
+	[RoutineCall,ETRename,"Tool:SubTool:Rename",[StrMerge,etName,"ETDraft"]]
+	[If,etBk<=etA,[VarSet,etA,etA+1]]
+	[SubToolSelect,etA]
+	[VarSet,etTmp,[SubToolGetStatus,etBk]]
+	[If,(etTmp&1)==1,[SubToolSetStatus,etBk,etTmp-1]]
+	[RoutineCall,ETLog,[StrMerge,"dup bk=",etBk," a=",etA]]
+	// 2) fade the draft on the base
+	[RoutineCall,ETBaseBegin]
+	[RoutineCall,ETFill,etCR,etCG,etCB,100-etV]
+	[RoutineCall,ETBaseEnd]
+	// 3) ink layer
+	[IPress,Tool:Layers:New]
+	[RoutineCall,ETRename,"Tool:Layers:Rename",[StrMerge,"ETInk-",etCR,"-",etCG,"-",etCB]]
+	[IUnPress,Draw:Zadd]
+	[IUnPress,Draw:Zsub]
+	[IPress,Draw:Rgb]
+	[ISet,Draw:Rgb Intensity,100]
+	[IColorSet,0,0,0]
+	[RoutineCall,ETInkSelected]
+	[RoutineCall,ETLog,[StrMerge,"start done ink=",etLn," mod=",[IModGet,etLp]]]
+	[Note,#etMStartOK]
+]
+
+[RoutineDef,ETApply,
+	[VarSet,etDbgN,0]
+	[RoutineCall,ETCheck]
+	[If,etOK==0,[Note,#etMNoMesh][Exit]]
+	[RoutineCall,ETFindBackup]
+	[If,etBk<0,[Note,#etMNoBak][Exit]]
+	[RoutineCall,ETFindInk]
+	[RoutineCall,ETLog,[StrMerge,"after findink etOK=",etOK]]
+	[If,etOK==0,[Note,#etMNoInk][Exit]]
+	[RoutineCall,ETLog,"apply before parse"]
+	[RoutineCall,ETParseInk]
+	[RoutineCall,ETReadColor]
+	[VarSet,etV,[IGet,#etSl]]
+	[RoutineCall,ETBaseBegin]
+	[RoutineCall,ETProjectDraft]
+	[RoutineCall,ETFill,etCR,etCG,etCB,100-etV]
+	[RoutineCall,ETBaseEnd]
+	[RoutineCall,ETRecOn]
+	[If,etOK,[IColorSet,etUR,etUG,etUB]]
+	[NoteBar,[StrMerge,#etMApplyOK," ",etV,"%"]]
+]
+
+[RoutineDef,ETFinish,
+	[VarSet,etDbgN,0]
+	[RoutineCall,ETCheck]
+	[If,etOK==0,[Note,#etMNoMesh][Exit]]
+	[RoutineCall,ETFindBackup]
+	[RoutineCall,ETFindInk]
+	[If,etOK==0,[Note,#etMNoInk][Exit]]
+	[RoutineCall,ETParseInk]
+	[RoutineCall,ETReadColor]
+	[RoutineCall,ETBaseBegin]
+	[RoutineCall,ETFill,etCR,etCG,etCB,100]
+	[RoutineCall,ETBaseEnd]
+	[RoutineCall,ETRecOn]
+	[If,etOK,[IColorSet,etUR,etUG,etUB]]
+	[If,etBk>=0,
+		[NoteIButton,#etBDel]
+		[NoteIButton,#etBKeep]
+		[VarSet,etRes,[Note,#etMFinish1]]
+		[If,etRes==1,
+			[SubToolSelect,etBk]
+			[IKeyPress,'2',[IPress,Tool:SubTool:Delete]]
+			[If,etBk<etA,[VarSet,etA,etA-1]]
+			[SubToolSelect,etA]
+			[RoutineCall,ETLog,"backup deleted"]
+		]
+	,
+		[Note,#etMFinishOK]
+	]
+]
+
+[RoutineDef,ETRestore,
+	[VarSet,etDbgN,0]
+	[RoutineCall,ETCheck]
+	[If,etOK==0,[Note,#etMNoMesh][Exit]]
+	[RoutineCall,ETFindBackup]
+	[If,etBk<0,[Note,#etMNoBak][Exit]]
+	[RoutineCall,ETFindInk]
+	[RoutineCall,ETBaseBegin]
+	[RoutineCall,ETProjectDraft]
+	[RoutineCall,ETBaseEnd]
+	[RoutineCall,ETInkSelected]
+	[If,etOK,[RoutineCall,ETRecOn]]
+	[NoteBar,#etMRestoreOK]
+]
+
+// ---- UI ----
+[ISubPalette,#etP]
+[ISlider,#etSl,30,1,0,100,#etT0,,0,1]
+[IButton,#etB1,#etT1,[IShowActions,0][IConfig,4.8][RoutineCall,ETStart],0,1]
+[IButton,#etB2,#etT2,[IShowActions,0][IConfig,4.8][RoutineCall,ETApply],0,0.5]
+[IButton,#etB4,#etT4,[IShowActions,0][IConfig,4.8][RoutineCall,ETRestore],0,0.5]
+[IButton,#etB3,#etT3,[IShowActions,0][IConfig,4.8][RoutineCall,ETFinish],0,1]
+[IButton,#etB5,#etT5,[IShowActions,0][IConfig,4.8][Note,#etMHelp],0,1]
+
+// macro-palette button (required for files in ZStartup/Macros)
+[IButton,???,"EyeTrace help",
+	[IShowActions,0]
+	[IConfig,4.8]
+	[If,etDbg==1,[RoutineCall,__DEVACTION__],[Note,#etMHelp]]
+,,1,,,50]
