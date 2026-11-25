@@ -4,7 +4,9 @@
 Lines of the form   [VarSet,NAME,CN("中文文本")]   are expanded into chained
 StrFromAsc VarSets, because the ZScript compiler strips non-ASCII bytes.
 "\\n" inside CN("...") becomes a real newline (byte 10).
-Usage: python build.py [debuglogpath]
+Usage: python build.py [--lang zh|en] [debuglogpath]
+  --lang zh (default)  Chinese UI  -> dist/EyeTrace.txt
+  --lang en            English UI  -> dist/en/EyeTrace.txt (text from strings_en.py)
 """
 import re, sys, pathlib
 
@@ -29,26 +31,48 @@ def expand(indent, name, text):
 
 
 def main():
-    dbg = sys.argv[1] if len(sys.argv) > 1 else ''
+    args = sys.argv[1:]
+    lang = 'zh'
+    if '--lang' in args:
+        i = args.index('--lang')
+        lang = args[i + 1] if i + 1 < len(args) else ''
+        del args[i:i + 2]
+    if lang not in ('zh', 'en'):
+        sys.exit('--lang must be zh or en')
+    en = {}
+    if lang == 'en':
+        sys.path.insert(0, str(HERE))
+        from strings_en import EN as en
+    dst = DST if lang == 'zh' else HERE / 'dist' / 'en' / 'EyeTrace.txt'
+    dbg = args[0] if len(args) > 0 else ''
     lines = SRC.read_text(encoding='utf-8').splitlines()
     out = []
+    missing = []
     for ln in lines:
         m = pat.match(ln)
         if m:
-            out.extend(expand(*m.groups()))
+            indent, name, text = m.groups()
+            if lang == 'en':
+                if name not in en:
+                    missing.append(name)
+                    continue
+                text = en[name]  # real newlines; expand() encodes them as byte 10
+            out.extend(expand(indent, name, text))
             continue
         out.append(ln)
+    if missing:
+        sys.exit('strings_en.py is missing: ' + ', '.join(missing))
     text = '\r\n'.join(out) + '\r\n'
-    dev = sys.argv[2] if len(sys.argv) > 2 else 'ETApply'
+    dev = args[1] if len(args) > 1 else 'ETApply'
     text = text.replace('__DBGPATH__', dbg).replace('__DBGON__', '1' if dbg else '0')
     text = text.replace('__DEVACTION__', dev)
     # strip non-ASCII from comments (compiler would drop them anyway)
     bad = [c for c in text if ord(c) > 127]
     if bad:
         text = ''.join(c if ord(c) < 128 else '?' for c in text)
-    DST.parent.mkdir(exist_ok=True)
-    DST.write_bytes(text.encode('ascii'))
-    print('built', DST, len(text), 'chars; non-ascii replaced:', len(bad))
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_bytes(text.encode('ascii'))
+    print('built', dst, len(text), 'chars; non-ascii replaced:', len(bad))
 
 
 if __name__ == '__main__':
