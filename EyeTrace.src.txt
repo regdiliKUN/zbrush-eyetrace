@@ -33,6 +33,25 @@
 [VarDef,etB3,"ZPlugin:EyeTrace:Finish"]
 [VarDef,etB4,"ZPlugin:EyeTrace:Restore Draft"]
 [VarDef,etB5,"ZPlugin:EyeTrace:Help"]
+[VarDef,etB6,"ZPlugin:EyeTrace:Reset Brush"]
+[VarDef,etS7,""]
+[VarDef,etT7,""]
+[VarDef,etMRgbA,""]
+[VarDef,etMRgbB,""]
+[VarDef,etMZadd,""]
+[VarDef,etMRgbFail,""]
+[VarDef,etMBrushOK,""]
+[VarDef,etFix,""]
+[VarDef,etRIa,100]
+[VarDef,etRIb,100]
+[VarDef,etZa,0]
+[VarDef,etTg,100]
+[VarDef,etSlInk,"ZPlugin:EyeTrace:Ink Strength"]
+[VarDef,etS8,""]
+[VarDef,etT8,""]
+[VarDef,etMRgbC,""]
+[VarDef,etBSetA,""]
+[VarDef,etBKeepA,""]
 [VarDef,etTitle,""]
 [VarDef,etS1,""]
 [VarDef,etS2,""]
@@ -79,11 +98,23 @@
 [VarSet,etT3,CN("把旧稿区域填回干净底色，只留下描线。")]
 [VarSet,etT4,CN("把旧稿按原样恢复到模型上（描线图层保留）。")]
 [VarSet,etT5,CN("显示使用说明。")]
+[VarSet,etS7,CN("画笔复位")]
+[VarSet,etT7,CN("把画笔恢复成描线状态：上色模式（Rgb 开、Zadd 关）、Rgb 强度 100、黑色，并让 ETInk 图层继续录制。画笔发虚、颜色不对、画不上去时点它。")]
+[VarSet,etS8,CN("描线强度")]
+[VarSet,etT8,CN("描线时希望使用的 Rgb 强度。默认 100（线条最实）。想故意用半透明的线，就把这里调低到同样的数值，插件就不会再提醒。")]
+[VarSet,etMRgbA,CN("提醒：画笔 Rgb 强度是 ")]
+[VarSet,etMRgbB,CN("，\n面板“描线强度”是 ")]
+[VarSet,etMRgbC,CN("。\n强度低于 100 线条会发虚，\n颜色也会混进下面的旧稿。\n故意用低强度请点“保持”，\n并把“描线强度”调成一样。")]
+[VarSet,etBSetA,CN("改为 ")]
+[VarSet,etBKeepA,CN("保持 ")]
+[VarSet,etMZadd,CN("\n\n提醒：之前开着 Zadd（画的时候会改变模型形状），已自动关闭，只保留上色。")]
+[VarSet,etMRgbFail,CN("\n\n注意：没能自动把 Rgb 强度改成 100，请手动把顶部的“Rgb 强度”拖到 100。")]
+[VarSet,etMBrushOK,CN("画笔已复位：上色模式、Rgb 强度 100、黑色。")]
 [VarSet,etBOK,CN("继续")]
 [VarSet,etBCancel,CN("取消")]
 [VarSet,etBDel,CN("删除备份")]
 [VarSet,etBKeep,CN("保留备份")]
-[VarSet,etMHelp,CN("眼睛描图 使用说明\n\n1. 选中带旧稿的子工具，按 T 进入编辑模式。\n2. 如果眼睛和脸连在一起：先用遮罩把眼睛以外的地方遮住（只处理未遮罩区域）。单独的眼睛面片可以不遮罩。\n3. 把主颜色设成干净底色（一般是白色），调好“旧稿可见度”，点“开始描图”。\n4. 直接在模型上描线，可以随意旋转任何角度。线画在 ETInk 图层上。\n5. 想让旧稿更深或更浅：改滑杆，点“应用可见度”。\n6. 描完点“完成描图”，旧稿被清掉，只留描线。\n\n插件会把原子工具复制一份隐藏备份（名字以 ETDraft 结尾），用于恢复旧稿。")]
+[VarSet,etMHelp,CN("眼睛描图 使用说明\n\n1. 选中带旧稿的子工具，按 T 进入编辑模式。\n2. 如果眼睛和脸连在一起：先用遮罩把眼睛以外的地方遮住（只处理未遮罩区域）。单独的眼睛面片可以不遮罩。\n3. 把主颜色设成干净底色（一般是白色），调好“旧稿可见度”，点“开始描图”。\n4. 直接在模型上描线，可以随意旋转任何角度。线画在 ETInk 图层上。如果画笔发虚、颜色不对或画不上去，点“画笔复位”。\n5. 想让旧稿更深或更浅：改滑杆，点“应用可见度”。\n6. 描完点“完成描图”，旧稿被清掉，只留描线。\n\n插件会把原子工具复制一份隐藏备份（名字以 ETDraft 结尾），用于恢复旧稿。")]
 [VarSet,etMNoMesh,CN("请先选中一个多边形网格子工具，并按 T 进入编辑模式。")]
 [VarSet,etMBusy,CN("当前选中的图层已经是描线图层 ETInk，说明已经开始描图了。\n要调深浅请用“应用可见度”，描完请点“完成描图”。")]
 [VarSet,etMHasBak,CN("这个子工具已经有旧稿备份（ETDraft）。\n请先“完成描图”或“恢复旧稿”后删除备份，再重新开始。")]
@@ -106,6 +137,8 @@
 [VarSet,etB3,[StrMerge,#etP,":",#etS4]]
 [VarSet,etB4,[StrMerge,#etP,":",#etS5]]
 [VarSet,etB5,[StrMerge,#etP,":",#etS6]]
+[VarSet,etB6,[StrMerge,#etP,":",#etS7]]
+[VarSet,etSlInk,[StrMerge,#etP,":",#etS8]]
 
 // ---- working variables (no underscores) ----
 [VarDef,etOK,0]
@@ -311,13 +344,26 @@
 	]
 ]
 
+// Set the main colour. Besides IColorSet, also push the Color:R/G/B sliders,
+// otherwise sliders the user moved by hand can put their old value back
+// (user report on 2025: picked black, painted white).
+[RoutineDef,ETSetColor,
+	[IColorSet,cr,cg,cb]
+	[If,[IExists,Color:R],
+		[ISet,Color:R,cr]
+		[ISet,Color:G,cg]
+		[ISet,Color:B,cb]
+	]
+	[IColorSet,cr,cg,cb]
+,cr,cg,cb]
+
 // FillObject with colour (r,g,b) at Rgb Intensity pct (colour only, no material)
 [RoutineDef,ETFill,
 	[If,pct>0,
 		[VarSet,etRI,[IGet,Draw:Rgb Intensity]]
 		[VarSet,etMrgb,[IGet,Draw:Mrgb]]
 		[IPress,Draw:Rgb]
-		[IColorSet,fr,fg,fb]
+		[RoutineCall,ETSetColor,fr,fg,fb]
 		[ISet,Draw:Rgb Intensity,pct]
 		[IPress,Color:FillObject]
 		[ISet,Draw:Rgb Intensity,etRI]
@@ -353,6 +399,45 @@
 	]
 	[SubToolSelect,etA]
 	[RoutineCall,ETLog,"projected draft"]
+]
+
+// Put the brush into tracing state. Zadd/Zsub are always switched off (they
+// would change the shape). Rgb Intensity: the user chooses it with the
+// "ink strength" slider (default 100). If the brush differs from the slider:
+//   ask=1 -> ask the user (set to slider value / keep current), never force
+//   ask=0 -> set it to the slider value silently ("Reset brush" button)
+// etFix gets a note about what was corrected (Zadd).
+[RoutineDef,ETBrushFix,
+	[VarSet,etTg,[IGet,#etSlInk]]
+	[VarSet,etRIa,[IGet,Draw:Rgb Intensity]]
+	[VarSet,etZa,[IGet,Draw:Zadd]]
+	[IUnPress,Draw:Zadd]
+	[IUnPress,Draw:Zsub]
+	[IPress,Draw:Rgb]
+	[VarSet,etFix,""]
+	[If,etZa,[VarSet,etFix,#etMZadd]]
+	[If,etRIa!=etTg,
+		[If,ask,
+			[NoteIButton,[StrMerge,#etBSetA,etTg]]
+			[NoteIButton,[StrMerge,#etBKeepA,etRIa]]
+			[VarSet,etRes,[Note,[StrMerge,#etMRgbA,etRIa,#etMRgbB,etTg,#etMRgbC]]]
+			[If,etRes==1,[ISet,Draw:Rgb Intensity,etTg]]
+		,
+			[ISet,Draw:Rgb Intensity,etTg]
+		]
+	]
+	[VarSet,etRIb,[IGet,Draw:Rgb Intensity]]
+	[RoutineCall,ETLog,[StrMerge,"brushfix rgbint ",etRIa," -> ",etRIb," target=",etTg," zadd=",etZa]]
+,ask]
+
+// "Reset brush" button
+[RoutineDef,ETBrushReset,
+	[VarSet,etDbgN,0]
+	[RoutineCall,ETBrushFix,0]
+	[RoutineCall,ETSetColor,0,0,0]
+	[RoutineCall,ETInkSelected]
+	[If,etOK,[RoutineCall,ETRecOn]]
+	[Note,[StrMerge,#etMBrushOK,#etFix]]
 ]
 
 // ---- actions ----
@@ -394,14 +479,11 @@
 	// 3) ink layer
 	[IPress,Tool:Layers:New]
 	[RoutineCall,ETRename,"Tool:Layers:Rename",[StrMerge,"ETInk-",etCR,"-",etCG,"-",etCB]]
-	[IUnPress,Draw:Zadd]
-	[IUnPress,Draw:Zsub]
-	[IPress,Draw:Rgb]
-	[ISet,Draw:Rgb Intensity,100]
-	[IColorSet,0,0,0]
+	[RoutineCall,ETBrushFix,1]
+	[RoutineCall,ETSetColor,0,0,0]
 	[RoutineCall,ETInkSelected]
 	[RoutineCall,ETLog,[StrMerge,"start done ink=",etLn," mod=",[IModGet,etLp]]]
-	[Note,#etMStartOK]
+	[Note,[StrMerge,#etMStartOK,#etFix]]
 ]
 
 [RoutineDef,ETApply,
@@ -422,8 +504,15 @@
 	[RoutineCall,ETFill,etCR,etCG,etCB,100-etV]
 	[RoutineCall,ETBaseEnd]
 	[RoutineCall,ETRecOn]
-	[If,etOK,[IColorSet,etUR,etUG,etUB]]
-	[NoteBar,[StrMerge,#etMApplyOK," ",etV,"%"]]
+	[If,etOK,[RoutineCall,ETSetColor,etUR,etUG,etUB]]
+	// the fill above restored the user's own Rgb Intensity: check it now
+	[RoutineCall,ETBrushFix,1]
+	[VarSet,etLen,[StrLength,etFix]]
+	[If,etLen>0,
+		[Note,[StrMerge,#etMApplyOK," ",etV,"%",#etFix]]
+	,
+		[NoteBar,[StrMerge,#etMApplyOK," ",etV,"%"]]
+	]
 ]
 
 [RoutineDef,ETFinish,
@@ -439,7 +528,7 @@
 	[RoutineCall,ETFill,etCR,etCG,etCB,100]
 	[RoutineCall,ETBaseEnd]
 	[RoutineCall,ETRecOn]
-	[If,etOK,[IColorSet,etUR,etUG,etUB]]
+	[If,etOK,[RoutineCall,ETSetColor,etUR,etUG,etUB]]
 	[If,etBk>=0,
 		[NoteIButton,#etBDel]
 		[NoteIButton,#etBKeep]
@@ -474,9 +563,11 @@
 // ---- UI ----
 [ISubPalette,#etP]
 [ISlider,#etSl,30,1,0,100,#etT0,,0,1]
+[ISlider,#etSlInk,100,1,1,100,#etT8,,0,1]
 [IButton,#etB1,#etT1,[IShowActions,0][IConfig,4.8][RoutineCall,ETStart],0,1]
 [IButton,#etB2,#etT2,[IShowActions,0][IConfig,4.8][RoutineCall,ETApply],0,0.5]
 [IButton,#etB4,#etT4,[IShowActions,0][IConfig,4.8][RoutineCall,ETRestore],0,0.5]
+[IButton,#etB6,#etT7,[IShowActions,0][IConfig,4.8][RoutineCall,ETBrushReset],0,1]
 [IButton,#etB3,#etT3,[IShowActions,0][IConfig,4.8][RoutineCall,ETFinish],0,1]
 [IButton,#etB5,#etT5,[IShowActions,0][IConfig,4.8][Note,#etMHelp],0,1]
 

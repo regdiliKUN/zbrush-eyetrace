@@ -1,5 +1,7 @@
 # local test data (contains private model copies and logs)
 probe/
+# local handover notes (machine paths, account info)
+*HANDOVER*.md
 *.zsc
 __pycache__/
 *.pyc
