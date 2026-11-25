@@ -9,13 +9,13 @@
 
 已在 **ZBrush 2022.0.5** 和 **ZBrush 2025.0.1**（Windows）实机测试。
 
-> English: An overlay-tracing helper for ZBrush. It fades an old polypaint draft on the mesh, creates an ink layer to trace on from any angle, lets you re-adjust the draft opacity at any time, and clears the draft when you are done. Tested on ZBrush 2022.0.5 and 2025.0.1 (Windows). The UI is in Chinese.
+> English: An overlay-tracing helper for ZBrush. It fades an old polypaint draft on the mesh, creates an ink layer to trace on from any angle, lets you re-adjust the draft opacity at any time, and clears the draft when you are done. Tested on ZBrush 2022.0.5 and 2025.0.1 (Windows) with the Chinese UI. An **English UI build** is in [`dist/en/EyeTrace.txt`](dist/en/EyeTrace.txt) (menu: ZPlugin > EyeTrace); install it the same way, to `ZStartup\Macros\EyeTrace\EyeTrace.txt`. The English build has the same code as the Chinese one, but it has not been tested inside ZBrush yet, so please report anything odd (e.g. truncated button labels) in Issues.
 
 > 觉得好用的话，点个 ⭐ Star 支持一下 · If you find it useful, please give it a ⭐ Star!
 
 ## 安装
 
-1. 到 [Releases](../../releases/latest) 下载 `EyeTrace_v1.0.0.zip` 并解压（或直接下载 [`dist/EyeTrace.txt`](dist/EyeTrace.txt)）。
+1. 到 [Releases](../../releases/latest) 下载 `EyeTrace_v1.0.0.zip` 并解压（或直接下载 [`dist/EyeTrace.txt`](dist/EyeTrace.txt)；英文界面版是 [`dist/en/EyeTrace.txt`](dist/en/EyeTrace.txt)，两个只装一个）。
 2. 放到 ZBrush 安装目录下：
    ```
    <ZBrush 安装目录>\ZStartup\Macros\EyeTrace\EyeTrace.txt
@@ -80,7 +80,8 @@
 源码 [`EyeTrace.src.txt`](EyeTrace.src.txt) 使用 UTF-8，中文写在 `CN("...")` 中。ZBrush 的 ZScript 编译器会丢弃非 ASCII 字符，因此用 [`build.py`](build.py) 把中文转换为运行时 `StrFromAsc` 字节拼接，生成纯 ASCII 的 `dist/EyeTrace.txt`：
 
 ```
-python build.py                              # 正式版
+python build.py                              # 正式版（中文界面）
+python build.py --lang en                    # 英文界面版 -> dist/en/EyeTrace.txt，文案在 strings_en.py
 python build.py <日志路径> <宏按钮绑定的例程>   # 调试版：写日志，宏菜单按钮直接调用指定例程
 ```
 
