@@ -11,6 +11,8 @@
 
 > English: An overlay-tracing helper for ZBrush. It fades an old polypaint draft on the mesh, creates an ink layer to trace on from any angle, lets you re-adjust the draft opacity at any time, and clears the draft when you are done. Tested on ZBrush 2022.0.5 and 2025.0.1 (Windows). The UI is in Chinese.
 
+> 觉得好用的话，点个 ⭐ Star 支持一下 · If you find it useful, please give it a ⭐ Star!
+
 ## 安装
 
 1. 到 [Releases](../../releases/latest) 下载 `EyeTrace_v1.0.0.zip` 并解压（或直接下载 [`dist/EyeTrace.txt`](dist/EyeTrace.txt)）。
