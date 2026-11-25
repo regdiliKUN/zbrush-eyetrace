@@ -15,12 +15,12 @@
 
 ## 安装
 
-1. 到 [Releases](../../releases/latest) 下载 `EyeTrace_v1.0.0.zip` 并解压（或直接下载 [`dist/EyeTrace.txt`](dist/EyeTrace.txt)；英文界面版是 [`dist/en/EyeTrace.txt`](dist/en/EyeTrace.txt)，两个只装一个）。
-2. 放到 ZBrush 安装目录下：
+1. 到 [Releases](../../releases/latest) 下载 `EyeTrace_v1.1.0.zip` 并解压（或直接下载 [`dist/EyeTrace.txt`](dist/EyeTrace.txt)；英文界面版是 [`dist/en/EyeTrace.txt`](dist/en/EyeTrace.txt)，两个只装一个）。
+2. 选择 `Chinese` 或 `English` 文件夹，将其中的 `ZStartup` 合并到 ZBrush 安装目录。手动安装时，目标路径为：
    ```
    <ZBrush 安装目录>\ZStartup\Macros\EyeTrace\EyeTrace.txt
    ```
-3. 重启 ZBrush。菜单 **Z插件（ZPlugin）→ 眼睛描图** 会出现（ZBrush 启动时自动编译，无需其他步骤）。
+3. 重启 ZBrush。中文菜单为 **Z插件（ZPlugin）→ 眼睛描图**，英文菜单为 **ZPlugin → EyeTrace**（ZBrush 启动时自动编译，无需其他步骤）。
 
 卸载：删除 `ZStartup\Macros\EyeTrace` 文件夹。
 
