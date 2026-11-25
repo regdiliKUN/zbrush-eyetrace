@@ -9,7 +9,7 @@
 
 已在 **ZBrush 2022.0.5** 和 **ZBrush 2025.0.1**（Windows）实机测试。
 
-> English: An overlay-tracing helper for ZBrush. It fades an old polypaint draft on the mesh, creates an ink layer to trace on from any angle, lets you re-adjust the draft opacity at any time, and clears the draft when you are done. Tested on ZBrush 2022.0.5 and 2025.0.1 (Windows) with the Chinese UI. An **English UI build** is in [`dist/en/EyeTrace.txt`](dist/en/EyeTrace.txt) (menu: ZPlugin > EyeTrace); install it the same way, to `ZStartup\Macros\EyeTrace\EyeTrace.txt`. The English build has the same code as the Chinese one, but it has not been tested inside ZBrush yet, so please report anything odd (e.g. truncated button labels) in Issues.
+> English: An overlay-tracing helper for ZBrush. It fades an old polypaint draft on the mesh, creates an ink layer to trace on from any angle, lets you re-adjust the draft opacity at any time, and clears the draft when you are done. Tested on ZBrush 2022.0.5 and 2025.0.1 (Windows) with the Chinese UI. An **English UI build** is in [`dist/en/EyeTrace.txt`](dist/en/EyeTrace.txt) (menu: ZPlugin > EyeTrace); install it the same way, to `ZStartup\Macros\EyeTrace\EyeTrace.txt`. The English build uses the same code as the Chinese build. Starting a trace was checked in ZBrush 2022.0.5. Starting a trace, changing draft visibility, and finishing with the new strokes preserved were tested in ZBrush 2025.0.1.
 
 > 觉得好用的话，点个 ⭐ Star 支持一下 · If you find it useful, please give it a ⭐ Star!
 
